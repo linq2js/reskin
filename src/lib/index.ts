@@ -19,7 +19,7 @@ export interface ThemeProviderProps<T> {
 }
 
 export interface ThemedProps {
-  children: (themeContext: ThemeContext<any>) => ReactNode;
+  children: (themeContext: ThemeContextValue<any>) => ReactNode;
 }
 
 export type ResponsiveValue<T> =
@@ -30,9 +30,9 @@ export type ResponsiveValue<T> =
 
 export interface ThemeMeta<T> {}
 
-export type ThemeContext<T> = {
+export type ThemeContextValue<T, TContext = any> = {
   original: T;
-  context: any;
+  context: TContext;
   breakpoint?: number;
   ratio?: number;
   theme: ThemeObjectInfer<T>;
@@ -57,10 +57,10 @@ export type ThemeObjectInfer<T> = {
 
 type ThemeCache<T> = {
   hasResponsiveValue: boolean;
-  value: ThemeContext<T>;
+  value: ThemeContextValue<T>;
 };
 
-const themeContext = createContext<ThemeContext<any>>(null as any);
+const themeContext = createContext<ThemeContextValue<any>>(null as any);
 const EMPTY_OBJECT = {};
 
 function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
@@ -68,7 +68,7 @@ function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
   const onChangeRef = useRef(onChange);
   const cacheRef = useRef<ThemeCache<T>>();
   const contextRef = useRef(context);
-  const value = useMemo<ThemeContext<T>>(() => {
+  const value = useMemo<ThemeContextValue<T>>(() => {
     // return prev cache value if responsive value used and theme is not changed
     if (
       cacheRef.current &&
@@ -117,11 +117,11 @@ function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
       }
       return value;
     }
-
-    const meta = Object.assign(rx, {
+    let themeProxy: ThemeObjectInfer<T>;
+    const themeContextValue = Object.assign(rx, {
       breakpoint,
       ratio,
-      theme: createProxy(theme, rx, context) as any as ThemeObjectInfer<T>,
+      theme: null as any as ThemeObjectInfer<T>,
       original: theme,
       rx,
       get context() {
@@ -132,11 +132,20 @@ function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
       },
     });
 
+    Object.defineProperty(rx, "theme", {
+      get() {
+        if (!themeProxy) {
+          themeProxy = createProxy(theme, themeContextValue) as any;
+        }
+        return themeProxy;
+      },
+    });
+
     cacheRef.current = {
       get hasResponsiveValue() {
         return hasResponsiveValue;
       },
-      value: meta,
+      value: themeContextValue,
     };
 
     return cacheRef.current.value;
@@ -150,11 +159,11 @@ function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
   });
 }
 
-function useTheme<T = any>(): ThemeContext<ThemeObjectInfer<T>> {
+function useTheme<T = any>(): ThemeContextValue<ThemeObjectInfer<T>> {
   return useContext(themeContext);
 }
 
-function createProxy(obj: any, rx: (value: any) => any, context: any) {
+function createProxy<T>(obj: any, rx: ThemeContextValue<T>) {
   const map = new Map<string | Symbol, any>();
   return new Proxy(EMPTY_OBJECT, {
     get(_, prop) {
@@ -167,10 +176,10 @@ function createProxy(obj: any, rx: (value: any) => any, context: any) {
           !Array.isArray(value)
         ) {
           // is plain object
-          value = createProxy(value, rx, context);
+          value = createProxy(value, rx);
         } else {
           if (typeof value === "function") {
-            value = value(context);
+            value = value(rx);
           }
           value = rx(value);
         }
@@ -182,7 +191,7 @@ function createProxy(obj: any, rx: (value: any) => any, context: any) {
   });
 }
 
-function createThemeHook<T>(): () => ThemeContext<ThemeObjectInfer<T>> {
+function createThemeHook<T>(): () => ThemeContextValue<ThemeObjectInfer<T>> {
   return useTheme;
 }
 

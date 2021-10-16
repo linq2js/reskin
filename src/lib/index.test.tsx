@@ -39,6 +39,19 @@ test("should return theme object properly", () => {
   expect(result.current.theme.nested.value1).toBe(theme.nested.value1);
 });
 
+test("dynamic value", () => {
+  const theme = {
+    hello: "Hello",
+    helloWorld: (x: any) => `${x.theme.hello} World`,
+  };
+  const wrapper = createWrapper({ theme });
+  const { result } = renderHook(
+    () => useTheme<typeof theme>().theme.helloWorld,
+    { wrapper }
+  );
+  expect(result.current).toBe("Hello World");
+});
+
 function createWrapper<T>(props: ThemeProviderProps<T>) {
   return ({ children }: any) =>
     React.createElement(ThemeProvider as any, props, children);
