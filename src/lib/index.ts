@@ -37,6 +37,7 @@ export type ThemeContext<T> = {
   ratio?: number;
   theme: ThemeObjectInfer<T>;
   <T>(value: ResponsiveValue<T>): T | undefined;
+  rx<T>(value: ResponsiveValue<T>): T | undefined;
   change(theme: any): void;
 };
 
