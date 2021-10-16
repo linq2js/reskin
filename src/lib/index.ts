@@ -22,11 +22,7 @@ export interface ThemedProps {
   children: (...args: ThemeContextValue<any>) => ReactNode;
 }
 
-export type ResponsiveValue<T> =
-  | undefined
-  | null
-  | T
-  | (undefined | null | T)[];
+export type ResponsiveValue<T> = undefined | T | (undefined | T)[];
 
 export interface ThemeUtils<T> {
   change(theme: any): void;
@@ -112,7 +108,9 @@ function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
 
     cacheRef.current = {
       theme,
-      hasResponsiveValue,
+      get hasResponsiveValue() {
+        return hasResponsiveValue;
+      },
       value: [
         createProxy(theme, rx, context) as any as T,
         {
