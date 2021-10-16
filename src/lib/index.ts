@@ -4,6 +4,9 @@ import {
   useMemo,
   useRef,
   useContext,
+  memo,
+  FC,
+  ReactNode,
 } from "react";
 
 export interface ThemeProviderProps<T> {
@@ -11,8 +14,12 @@ export interface ThemeProviderProps<T> {
   ratio?: number;
   breakpoint?: number;
   context?: any;
-  onChange?: (theme: T) => void;
+  onChange?: (theme: any) => void;
   children?: React.ReactNode;
+}
+
+export interface ThemedProps {
+  children: (...args: ThemeContextValue<any>) => ReactNode;
 }
 
 export type ResponsiveValue<T> =
@@ -22,7 +29,7 @@ export type ResponsiveValue<T> =
   | (undefined | null | T)[];
 
 export interface ThemeUtils<T> {
-  change(theme: T): void;
+  change(theme: any): void;
   rx<T>(value: ResponsiveValue<T>): T | undefined;
 }
 
@@ -42,19 +49,24 @@ export type ThemeObjectInfer<T> = {
 
 type ThemeCache<T> = {
   hasResponsiveValue: boolean;
+  theme: T;
   value: ThemeContextValue<T>;
 };
 
 const themeContext = createContext<ThemeContextValue<any>>(null as any);
 const EMPTY_OBJECT = {};
 
-function ThemeProvider<T>(props: ThemeProviderProps<T>) {
+function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
   const { breakpoint, ratio, theme, children, context, onChange } = props;
   const onChangeRef = useRef(onChange);
   const cacheRef = useRef<ThemeCache<T>>();
   const value = useMemo<ThemeContextValue<T>>(() => {
-    // return prev cache value if responsive value used
-    if (cacheRef.current && !cacheRef.current.hasResponsiveValue) {
+    // return prev cache value if responsive value used and theme is not changed
+    if (
+      cacheRef.current &&
+      !cacheRef.current.hasResponsiveValue &&
+      cacheRef.current.theme === theme
+    ) {
       return cacheRef.current.value;
     }
     const hasRatio = typeof ratio === "number";
@@ -99,6 +111,7 @@ function ThemeProvider<T>(props: ThemeProviderProps<T>) {
     }
 
     cacheRef.current = {
+      theme,
       hasResponsiveValue,
       value: [
         createProxy(theme, rx, context) as any as T,
@@ -121,7 +134,7 @@ function ThemeProvider<T>(props: ThemeProviderProps<T>) {
   });
 }
 
-function useTheme<T = {}>(): ThemeContextValue<ThemeObjectInfer<T>> {
+function useTheme<T = any>(): ThemeContextValue<ThemeObjectInfer<T>> {
   return useContext(themeContext);
 }
 
@@ -153,4 +166,13 @@ function createProxy(obj: any, rx: (value: any) => any, context: any) {
   });
 }
 
-export { useTheme, ThemeProvider };
+const ThemedFC: FC<ThemedProps> = (props: ThemedProps) => {
+  const args = useTheme();
+  return props.children(...args) as any;
+};
+
+const ThemeProvider = memo(ThemeProviderFC);
+
+const Themed = memo(ThemedFC);
+
+export { useTheme, Themed, ThemeProvider };
