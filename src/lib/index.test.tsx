@@ -20,23 +20,23 @@ test("should return theme object properly", () => {
     wrapper,
   });
 
-  const obj = result.current[0];
+  const obj = result.current.theme;
 
-  expect(result.current[0].string).toBe(theme.string);
-  expect(result.current[0].number).toBe(theme.number);
-  expect(result.current[0].responsive).toBe(1);
-  expect(result.current[0].dynamic).toBe(dynamic);
-  expect(result.current[0].nested.value1).toBe(theme.nested.value1);
+  expect(result.current.theme.string).toBe(theme.string);
+  expect(result.current.theme.number).toBe(theme.number);
+  expect(result.current.theme.responsive).toBe(1);
+  expect(result.current.theme.dynamic).toBe(dynamic);
+  expect(result.current.theme.nested.value1).toBe(theme.nested.value1);
 
   rerender();
 
-  expect(result.current[0]).toBe(obj);
+  expect(result.current.theme).toBe(obj);
 
-  expect(result.current[0].string).toBe(theme.string);
-  expect(result.current[0].number).toBe(theme.number);
-  expect(result.current[0].responsive).toBe(1);
-  expect(result.current[0].dynamic).toBe(dynamic);
-  expect(result.current[0].nested.value1).toBe(theme.nested.value1);
+  expect(result.current.theme.string).toBe(theme.string);
+  expect(result.current.theme.number).toBe(theme.number);
+  expect(result.current.theme.responsive).toBe(1);
+  expect(result.current.theme.dynamic).toBe(dynamic);
+  expect(result.current.theme.nested.value1).toBe(theme.nested.value1);
 });
 
 function createWrapper<T>(props: ThemeProviderProps<T>) {
