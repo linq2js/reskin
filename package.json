@@ -30,6 +30,7 @@
     "react",
     "theming",
     "skin",
+    "responsive",
     "ui"
   ],
   "husky": {
