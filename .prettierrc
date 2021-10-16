@@ -2,5 +2,13 @@
   "singleQuote": false,
   "importOrder": ["^react", "^@", "^[./]"],
   "importOrderSeparation": true,
-  "experimentalBabelParserPluginsList": ["jsx", "typescript"]
+  "experimentalBabelParserPluginsList": ["jsx", "typescript"],
+  "overrides": [
+    {
+      "files": ["*.md"],
+      "options": {
+        "embeddedLanguageFormatting": "off"
+      }
+    }
+  ]
 }

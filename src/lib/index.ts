@@ -186,6 +186,19 @@ function createThemeHook<T>(): () => ThemeContext<ThemeObjectInfer<T>> {
   return useTheme;
 }
 
+function findBreakpoint(
+  screenSize: number,
+  breakpoints: number[],
+  defaultBreakpoint = 0
+) {
+  for (let i = breakpoints.length - 1; i >= 0; i--) {
+    if (screenSize >= breakpoints[i]) {
+      return i;
+    }
+  }
+  return defaultBreakpoint;
+}
+
 const ThemedFC: FC<ThemedProps> = (props: ThemedProps) => {
   const theme = useTheme();
   return props.children(theme) as any;
@@ -195,4 +208,4 @@ const ThemeProvider = memo(ThemeProviderFC);
 
 const Themed = memo(ThemedFC);
 
-export { useTheme, Themed, ThemeProvider, createThemeHook };
+export { useTheme, Themed, ThemeProvider, createThemeHook, findBreakpoint };
