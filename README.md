@@ -172,22 +172,24 @@ function App() {
 export default App;
 ```
 
-### Advanced usage
+## Advanced usages
 
-Using reskin as ii8n module
+### Using reskin as ii8n module
 
 ```jsx
-
 import { useMemo, useState } from "react";
 import { useTheme, ThemeProvider } from "reskin";
 
 const commonTranslation = {
   now: () => new Date().toString(),
   // interpolation
-  helloWorld: (x) => `${x.theme.translation.greeting} World`
+  helloWorld: (x) => `${x.theme.translation.hello} World`,
+  reactNode: (x) => (
+    <strong>Current language: {x.theme.translation.language}</strong>
+  )
 };
-const en = { ...commonTranslation, language: "en", gretting: "Hello" };
-const fr = { ...commonTranslation, language: "fr", gretting: "Bonjour" };
+const en = { ...commonTranslation, language: "en", hello: "Hello" };
+const fr = { ...commonTranslation, language: "fr", hello: "Bonjour" };
 const dark = { translation: en, background: "gray" };
 const light = { translation: en, background: "#c0c0c0" };
 
@@ -202,7 +204,8 @@ function ThemedComponent() {
         padding: 50
       }}
     >
-      {theme.translation.helloWorld} {theme.translation.now}
+      {theme.translation.helloWorld} {theme.translation.now}{" "}
+      {theme.translation.reactNode}
     </div>
   );
 }
@@ -249,3 +252,68 @@ function App() {
 
 export default App;
 ```
+
+## Concepts
+
+### Responsive values
+
+A simple array / tuple that contains multiple values, each item is used to specified breakpoint
+
+```js
+// let say you have the breakpoints [360, 480, 768]
+// and current breakpoint index is 1
+// your theme object looks like this
+const theme = { fontSize: [10, 15, 20] };
+
+const x = useTheme();
+console.log(x.theme.fontSize); // 15
+```
+
+### Dynamic value
+
+A value that can be evaluated once when the theme property is accessed
+
+```js
+const theme = { now: () => new Date(), something: 1 };
+const x = useTheme();
+console.log(x.theme.something); // theme.now is not evaluated
+console.log(x.theme.now); // theme.now is evaluated
+```
+
+When evaluating dynamic value, reskin passes the theme context object as the first argument of the function. That can lead to circular function calls
+
+```js
+const theme = {
+    prop1: (x) => x.theme.prop2,
+    prop2: (x) => x.theme.prop1
+}
+```
+
+## API References
+
+### &lt;ThemeProvider/&gt;
+
+It has following props
+
+- theme (any, required): a theme object, it can be any object type. reskin will create a proxy object that references to this object, and calculate the object prop value according to breakpoint and ratio
+- breakpoint (number, optional)
+- ratio (number, optional)
+
+### useTheme()
+
+Returns theme context object, it has following props
+
+- theme: a proxy of theme object which is passed to ThemeProvider
+- original: a theme object which is passed to ThemeProvider
+- context: a context object which is passed to ThemeProvider
+- breakpoint: a breakpoint value which is passed to ThemeProvider
+- ratio: a ratio value which is passed to ThemeProvider
+- rx(values): returns value according to selected breakpoint and ratio
+  ```jsx
+  // let say you have ThemeProvider like this and your breakpoints are [360, 480, 768]
+  // that means 1 is for 480 screen size
+  <ThemeProvider breakpoint={1} />
+  // your component implementation looks like this
+  const rx = useTheme();
+  const fontSize = rx([20, 24]); // fontSize will be 24 because your breakpoint index is 1
+  ```
