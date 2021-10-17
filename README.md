@@ -220,7 +220,7 @@ const theme = {
       safari: 17,
       // value for ios11
       'ios11': 15,
-      // value for any ios query
+      // value for any ios version
       'ios.+': 15,
     },
   },
