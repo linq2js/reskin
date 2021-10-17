@@ -205,22 +205,22 @@ function App() {
 }
 ```
 
-### Using platform specific values
+### Using query specific values
 
 ```jsx
 import { useTheme, ThemeProvider } from "reskin";
 
 const theme = {
-  // platform specific value
+  // query specific value
   fontSize: {
-    $platform: {
+    $is: {
       // value for android
       android: 16,
       // value for safari
       safari: 17,
       // value for ios11
       'ios11': 15,
-      // value for any ios platform
+      // value for any ios query
       'ios.+': 15,
     },
   },
@@ -233,7 +233,33 @@ function Heading() {
 
 function App() {
   return (
-    <ThemeProvider theme={theme} platform="ios12">
+    <ThemeProvider theme={theme} query="ios12">
+      <Heading />
+    </ThemeProvider>
+  );
+}
+```
+
+### Using reskin as i18n module
+
+```jsx
+import { useTheme, ThemeProvider } from "reskin";
+import { useState } from "react";
+
+const en = { hello: "Hello" };
+const fr = { hello: "Bonjour" };
+
+function Heading() {
+  const { theme } = useTheme();
+  return <h1>{theme.hello}</h1>;
+}
+
+function App() {
+  const [theme, setTheme] = useState(en);
+  return (
+    <ThemeProvider theme={theme}>
+      <button onClick={() => setTheme(en)}>EN</button>
+      <button onClick={() => setTheme(fr)}>FR</button>
       <Heading />
     </ThemeProvider>
   );

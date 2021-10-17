@@ -98,14 +98,14 @@ test("plaform specific", () => {
   const defaultTheme = {
     topKey: "aaa",
     fontSize: {
-      $platform: {
+      $is: {
         web: 1,
         ios: 2,
         android: 3,
       },
     },
     group: {
-      $platform: {
+      $is: {
         web: {
           fontSize: 1,
         },
@@ -118,7 +118,7 @@ test("plaform specific", () => {
       },
     },
   };
-  const wrapper = createWrapper({ theme: defaultTheme, platform: "ios" });
+  const wrapper = createWrapper({ theme: defaultTheme, query: "ios" });
   const { result } = renderHook(
     () => {
       const { theme } = useTheme<typeof defaultTheme>();
@@ -134,13 +134,13 @@ test("plaform specific with regex", () => {
   const defaultTheme = {
     topKey: "aaa",
     fontSize: {
-      $platform: {
+      $is: {
         "ios.+": 1,
         ios13: 2,
       },
     },
   };
-  const wrapper = createWrapper({ theme: defaultTheme, platform: "ios14" });
+  const wrapper = createWrapper({ theme: defaultTheme, query: "ios14" });
   const { result } = renderHook(
     () => {
       const { theme } = useTheme<typeof defaultTheme>();

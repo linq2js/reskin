@@ -15,7 +15,7 @@ export interface ThemeProviderProps {
   theme: Theme;
   ratio?: number;
   breakpoint?: number;
-  platform?: string;
+  query?: string;
   context?: any;
   fallback?: ReactNode;
   onChange?: (themeContext: any) => void;
@@ -34,13 +34,13 @@ export interface ThemeMeta<T> {}
 export interface Theme {
   key?: string;
   load?: (context: ThemeContext) => any;
-  platform?: string;
+  query?: string;
   [key: string]: any;
 }
 
 export type ThemeContext<T = any, TContext = any> = {
   original: T;
-  platform?: string;
+  query?: string;
   context: TContext;
   breakpoint?: number;
   ratio?: number;
@@ -66,8 +66,8 @@ export type ThemePropInfer<T> = T extends Array<infer TItem>
   : // prop value can be function
   T extends (...args: any[]) => any
   ? ReturnType<T>
-  : T extends { $platform: infer TPlatform }
-  ? TPlatform extends { [key: string]: infer TProps }
+  : T extends { $is: infer TQuery }
+  ? TQuery extends { [key: string]: infer TProps }
     ? ThemePropInfer<TProps>
     : never
   : T extends { [key: string]: any }
@@ -100,7 +100,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
     context,
     suspense,
     fallback,
-    platform,
+    query,
     onChange,
   } = props;
   const onChangeRef = useRef(onChange);
@@ -190,7 +190,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
 
     let themeProxy: any;
     const contextValue: ThemeContext = Object.assign(sx, {
-      platform,
+      query,
       breakpoint,
       ratio,
       theme: null as any,
@@ -247,7 +247,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
     }
 
     return cache;
-  }, [breakpoint, ratio, theme, platform, rerender]);
+  }, [breakpoint, ratio, theme, query, rerender]);
   contextRef.current = context;
   onChangeRef.current = onChange;
 
@@ -285,22 +285,22 @@ function createProxy(obj: any, sx: ThemeContext) {
         let value = obj[prop];
         // is plain object
         if (isObject(value)) {
-          if ("$platform" in value) {
-            if (!value.$platform) {
-              throw new Error("Invalid platform specific value");
+          if ("$is" in value) {
+            if (!value.$is) {
+              throw new Error("Invalid query specific value");
             }
-            if (!sx.platform) {
-              throw new Error("No platform provided in ThemeProvider");
+            if (!sx.query) {
+              throw new Error("No query provided in ThemeProvider");
             }
-            const platformValues = value.$platform;
+            const queryValues = value.$is;
             value = undefined;
-            if (sx.platform in platformValues) {
-              value = platformValues[sx.platform];
+            if (sx.query in queryValues) {
+              value = queryValues[sx.query];
             } else {
               // using regex
-              Object.entries(platformValues).some(([k, v]) => {
+              Object.entries(queryValues).some(([k, v]) => {
                 const re = `^${k}\$`;
-                if ((sx.platform as string).match(re)) {
+                if ((sx.query as string).match(re)) {
                   value = v;
                   return true;
                 }
