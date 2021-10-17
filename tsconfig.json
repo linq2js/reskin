@@ -2,6 +2,7 @@
   "include": ["./src"],
   "exclude": ["node_modules/*", "**/*.test.*"],
   "compilerOptions": {
+    "skipLibCheck": true,
     "strictNullChecks": true,
     "types": ["node", "@types/jest"],
     "esModuleInterop": false,

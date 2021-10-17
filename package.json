@@ -10,7 +10,9 @@
     "registry": "https://registry.npmjs.org"
   },
   "files": [
-    "dist"
+    "dist",
+    "native",
+    "web"
   ],
   "scripts": {
     "build:js": "rimraf dist/js && tsc",

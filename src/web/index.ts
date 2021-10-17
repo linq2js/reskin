@@ -38,6 +38,6 @@ export function useBreakpoint(
   return breakpoint;
 }
 
-function getScreenSize(selector: (width: number, height: number) => number) {
+function getScreenSize(selector?: (width: number, height: number) => number) {
   return selector?.(window.innerWidth, window.innerHeight) ?? window.innerWidth;
 }
