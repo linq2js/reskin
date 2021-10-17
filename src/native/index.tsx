@@ -9,7 +9,7 @@ export interface UseBreakpointsOptions {
 
 export function useBreakpoint(
   breakpoints: number[],
-  options: UseBreakpointsOptions
+  options: UseBreakpointsOptions = {}
 ) {
   const { width, height } = useWindowDimensions();
   const { selector } = options;

@@ -9,7 +9,7 @@ export interface UseBreakpointsOptions {
 
 export function useBreakpoint(
   breakpoints: number[],
-  options: UseBreakpointsOptions
+  options: UseBreakpointsOptions = {}
 ) {
   const { selector, defaultScreenSize } = options;
   const selectorRef = useRef(selector);
