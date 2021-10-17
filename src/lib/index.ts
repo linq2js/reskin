@@ -293,12 +293,16 @@ function createProxy(obj: any, sx: ThemeContext) {
               throw new Error("No query provided in ThemeProvider");
             }
             const queryValues = value.$is;
-            value = undefined;
+            value = queryValues.default;
             if (sx.query in queryValues) {
               value = queryValues[sx.query];
             } else {
               // using regex
               Object.entries(queryValues).some(([k, v]) => {
+                // ignore default key
+                if (k === "default") {
+                  return;
+                }
                 const re = `^${k}\$`;
                 if ((sx.query as string).match(re)) {
                   value = v;
