@@ -48,7 +48,7 @@ export type ThemeContext<T = any, TContext = any> = {
   <T>(value: ResponsiveValue<T>): T | undefined;
   sx<T>(value: ResponsiveValue<T>): T | undefined;
   set(theme: any): void;
-  select<T>(themeProps: any, value: T | T[] | undefined, defaultValue?: T): T;
+  select<T>(themeProps: any, value: any, defaultValue?: any): T;
   extract<
     TKey extends keyof TThemeProps,
     TThemeProps extends {},
@@ -185,11 +185,16 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
       return [value, clonedOfProps];
     }
 
-    function select(props: any, value: any, def?: any) {
+    function select(props: any, value: any, def?: any): any {
       if (typeof value === "string") {
-        return props?.[value] ?? def;
+        return (
+          props?.[value] ??
+          (typeof def === "undefined" ? def : select(props, def))
+        );
       }
-      return sx(value) ?? def;
+      return (
+        sx(value) ?? (typeof def === "undefined" ? def : select(props, def))
+      );
     }
 
     function set(value: any) {
