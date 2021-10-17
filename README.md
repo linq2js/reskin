@@ -107,11 +107,11 @@ const lightTheme = {};
 const darkTheme = {};
 
 function ThemeToggler() {
-  const { change } = useTheme();
+  const { set } = useTheme();
   return (
     <div>
-      <button onClick={() => change(darkTheme)}>Dark</button>
-      <button onClick={() => change(lightTheme)}>Light</button>
+      <button onClick={() => set(darkTheme)}>Dark</button>
+      <button onClick={() => set(lightTheme)}>Light</button>
     </div>
   );
 }
@@ -137,9 +137,9 @@ const lightTheme = { name: "light" };
 const darkTheme = { name: "dark" };
 
 function ThemeToggler() {
-  const { theme, change } = useTheme();
+  const { theme, set } = useTheme();
   return (
-    <button onClick={() => change(theme.name === "dark" ? "light" : "dark")}>
+    <button onClick={() => set(theme.name === "dark" ? "light" : "dark")}>
       {theme.name}
     </button>
   );
@@ -263,5 +263,33 @@ function App() {
       <Heading />
     </ThemeProvider>
   );
+}
+```
+
+### Dynamic values
+
+```jsx
+const data = {
+  // the dynamic value is evaluated once
+  now: () => new Date(),
+}
+
+const styles = {
+  reactNode: () => <View/>,
+  styles: (sx) => StyleCreator.create({
+    heading: {
+      fontWeight: 'bold',
+      fontSize: 30,
+      // select value according to breakpoint
+      margin: sx([10, 20, 30])
+    }
+  })
+}
+
+const en = {
+  hello: 'Hello',
+  world: 'World',
+  // iterpolation
+  greeting: ({ theme }) => `${theme.hello} ${theme.world}`
 }
 ```

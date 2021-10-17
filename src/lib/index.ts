@@ -47,7 +47,7 @@ export type ThemeContext<T = any, TContext = any> = {
   theme: ThemeObjectInfer<T>;
   <T>(value: ResponsiveValue<T>): T | undefined;
   sx<T>(value: ResponsiveValue<T>): T | undefined;
-  change(theme: any): void;
+  set(theme: any): void;
   extract<
     TKey extends keyof TThemeProps,
     TThemeProps extends {},
@@ -184,7 +184,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
       return [value, clonedOfProps];
     }
 
-    function change(value: any) {
+    function set(value: any) {
       onChangeRef.current?.(value);
     }
 
@@ -199,7 +199,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
       get context() {
         return contextRef.current;
       },
-      change,
+      set,
       extract,
     });
 

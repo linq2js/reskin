@@ -12,9 +12,6 @@
     "declaration": true,
     "rootDir": "./src",
     "module": "commonjs",
-    "jsx": "react",
-    "paths": {
-      "reskin": ["./src/lib/index.ts"]
-    }
+    "jsx": "react"
   }
 }
