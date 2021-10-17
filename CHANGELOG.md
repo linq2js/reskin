@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.1.0](https://github.com/linq2js/reskin/compare/v1.0.4...v1.1.0) (2021-10-17)
+
+
+### Features
+
+* add extract() ([b7fc079](https://github.com/linq2js/reskin/commit/b7fc07915bb5b9505e8d5b6e8a05c509ffa9ba24))
+
 ### [1.0.4](https://github.com/linq2js/reskin/compare/v1.0.3...v1.0.4) (2021-10-16)
 
 ### [1.0.3](https://github.com/linq2js/reskin/compare/v1.0.2...v1.0.3) (2021-10-16)
