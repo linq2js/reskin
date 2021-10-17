@@ -1,6 +1,6 @@
 {
   "name": "reskin",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Responsive, theme-based library for ReactJs, Expo, React Native",
   "main": "dist/js/lib/index.js",
   "module": "dist/es/lib/index.js",
