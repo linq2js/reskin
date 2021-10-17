@@ -7,19 +7,19 @@ import {
   memo,
   FC,
   ReactNode,
+  useState,
+  Component,
 } from "react";
 
-export interface ThemeProviderProps<T> {
-  theme: T;
+export interface ThemeProviderProps {
+  theme: any;
   ratio?: number;
   breakpoint?: number;
   context?: any;
+  fallback?: ReactNode;
   onChange?: (themeContext: any) => void;
+  suspense?: boolean;
   children?: React.ReactNode;
-}
-
-export interface ThemedProps {
-  children: (themeContext: ThemeContextValue<any>) => ReactNode;
 }
 
 export type ResponsiveValue<T> =
@@ -30,7 +30,7 @@ export type ResponsiveValue<T> =
 
 export interface ThemeMeta<T> {}
 
-export type ThemeContextValue<T, TContext = any> = {
+export type ThemeContext<T = any, TContext = any> = {
   original: T;
   context: TContext;
   breakpoint?: number;
@@ -39,6 +39,15 @@ export type ThemeContextValue<T, TContext = any> = {
   <T>(value: ResponsiveValue<T>): T | undefined;
   rx<T>(value: ResponsiveValue<T>): T | undefined;
   change(theme: any): void;
+  extract<
+    TKey extends keyof TThemeProps,
+    TThemeProps extends {},
+    TProps extends { [key in keyof TThemeProps]?: boolean }
+  >(
+    themeProps: TThemeProps,
+    compProps: TProps,
+    keys?: TKey | TKey[]
+  ): [TThemeProps[TKey] | undefined, Omit<TProps, TKey>];
 };
 
 export type ThemePropInfer<T> = T extends Array<infer TItem>
@@ -55,20 +64,33 @@ export type ThemeObjectInfer<T> = {
   [key in keyof T]: ThemePropInfer<T[key]>;
 };
 
-type ThemeCache<T> = {
+type ThemeCache = {
   hasResponsiveValue: boolean;
-  value: ThemeContextValue<T>;
+  value: ThemeContext;
+  ready?: boolean;
+  error?: any;
+  promise?: Promise<any>;
 };
 
-const themeContext = createContext<ThemeContextValue<any>>(null as any);
+const themeContext = createContext<ThemeContext<any>>(null as any);
 const EMPTY_OBJECT = {};
 
-function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
-  const { breakpoint, ratio, theme, children, context, onChange } = props;
+const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
+  const {
+    breakpoint,
+    ratio,
+    theme,
+    children,
+    context,
+    suspense,
+    fallback,
+    onChange,
+  } = props;
   const onChangeRef = useRef(onChange);
-  const cacheRef = useRef<ThemeCache<T>>();
+  const cacheRef = useRef<ThemeCache>();
   const contextRef = useRef(context);
-  const value = useMemo<ThemeContextValue<T>>(() => {
+  const rerender = useState<any>()[1];
+  const value = useMemo<ThemeContext>(() => {
     // return prev cache value if responsive value used and theme is not changed
     if (
       cacheRef.current &&
@@ -117,56 +139,132 @@ function ThemeProviderFC<T>(props: ThemeProviderProps<T>) {
       }
       return value;
     }
-    let themeProxy: ThemeObjectInfer<T>;
-    const themeContextValue = Object.assign(rx, {
+
+    function extract<
+      TKey extends keyof TThemeProps,
+      TThemeProps extends {},
+      TProps extends { [key in keyof TThemeProps]?: boolean }
+    >(
+      themeProps: TThemeProps,
+      compProps: TProps,
+      keys?: TKey | TKey[]
+    ): [TThemeProps[TKey] | undefined, Omit<TProps, TKey>] {
+      if (!keys) {
+        keys = (themeProps as any)?.$$keys;
+      }
+      if (!Array.isArray(keys)) {
+        keys = keys ? [keys as TKey] : [];
+      }
+      if (!keys.length) {
+        return [undefined as any, compProps];
+      }
+
+      const clonedOfProps = { ...compProps };
+      let found = false;
+      let value: any = undefined;
+      keys.forEach((key) => {
+        if (!found && compProps[key]) {
+          found = true;
+          value = themeProps[key];
+        }
+        delete clonedOfProps[key];
+      });
+      return [value, clonedOfProps];
+    }
+
+    function change(value: any) {
+      onChangeRef.current?.(value);
+    }
+
+    let themeProxy: any;
+    const contextValue: ThemeContext = Object.assign(rx, {
       breakpoint,
       ratio,
-      theme: null as any as ThemeObjectInfer<T>,
+      theme: null as any,
       original: theme,
       rx,
       get context() {
         return contextRef.current;
       },
-      change(newTheme: T) {
-        onChangeRef.current?.(newTheme);
-      },
+      change,
+      extract,
     });
 
     Object.defineProperty(rx, "theme", {
       get() {
         if (!themeProxy) {
-          themeProxy = createProxy(theme, themeContextValue) as any;
+          themeProxy = createProxy(theme, contextValue) as any;
         }
         return themeProxy;
       },
     });
 
-    cacheRef.current = {
+    const cache: ThemeCache = {
       get hasResponsiveValue() {
         return hasResponsiveValue;
       },
-      value: themeContextValue,
+      value: contextValue,
     };
 
-    return cacheRef.current.value;
-  }, [breakpoint, ratio, theme]);
+    if (typeof theme.load === "function") {
+      try {
+        const result = theme.load(contextValue);
+        if (result && typeof result.then === "function") {
+          cache.promise = result
+            .catch((e: any) => {
+              cache.error = e;
+            })
+            .finally(() => {
+              cache.ready = true;
+              rerender({});
+            });
+        } else {
+          cache.ready = true;
+        }
+      } catch (e) {
+        cache.error = e;
+        cache.ready = true;
+      }
+    } else {
+      cache.ready = true;
+    }
+
+    cacheRef.current = cache;
+
+    return cache.value;
+  }, [breakpoint, ratio, theme, rerender]);
   contextRef.current = context;
   onChangeRef.current = onChange;
+
+  if (!cacheRef.current?.ready) {
+    if (suspense) {
+      throw cacheRef.current?.promise;
+    }
+    return fallback as any;
+  }
 
   return createElement(themeContext.Provider, {
     value: value as any,
     children,
   });
-}
+});
 
-function useTheme<T = any>(): ThemeContextValue<ThemeObjectInfer<T>> {
+function useTheme<T = any>(): ThemeContext<ThemeObjectInfer<T>> {
   return useContext(themeContext);
 }
 
-function createProxy<T>(obj: any, rx: ThemeContextValue<T>) {
+function createProxy(obj: any, rx: ThemeContext) {
   const map = new Map<string | Symbol, any>();
+  let keys: string[];
   return new Proxy(EMPTY_OBJECT, {
     get(_, prop) {
+      if (prop === "$$keys") {
+        if (!keys) {
+          keys = Object.keys(obj);
+        }
+        return keys;
+      }
+
       const hasValue = map.has(prop);
       if (!hasValue) {
         let value = obj[prop];
@@ -191,7 +289,7 @@ function createProxy<T>(obj: any, rx: ThemeContextValue<T>) {
   });
 }
 
-function createThemeHook<T>(): () => ThemeContextValue<ThemeObjectInfer<T>> {
+function createThemeHook<T>(): () => ThemeContext<ThemeObjectInfer<T>> {
   return useTheme;
 }
 
@@ -208,13 +306,28 @@ function findBreakpoint(
   return defaultBreakpoint;
 }
 
-const ThemedFC: FC<ThemedProps> = (props: ThemedProps) => {
+const Themed: FC<{
+  as?: any;
+  props: (theme: ThemeContext) => any;
+  [key: string]: any;
+}> = memo((props) => {
+  const { as: a, props: p, ...o } = props;
   const theme = useTheme();
-  return props.children(theme) as any;
+  return createElement(a || "div", { ...p(theme), ...o });
+});
+
+function themed<T>(
+  type: string | FC<T> | Component<T>,
+  props: (themeContext: ThemeContext) => T
+): ReactNode {
+  return createElement(Themed, { as: type, props });
+}
+
+export {
+  useTheme,
+  ThemeProvider,
+  themed,
+  Themed,
+  createThemeHook,
+  findBreakpoint,
 };
-
-const ThemeProvider = memo(ThemeProviderFC);
-
-const Themed = memo(ThemedFC);
-
-export { useTheme, Themed, ThemeProvider, createThemeHook, findBreakpoint };

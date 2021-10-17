@@ -1,58 +1,42 @@
 import * as React from "react";
 
-import { renderHook } from "@testing-library/react-hooks";
+import { render, act } from "@testing-library/react";
 
-import { ThemeProvider, ThemeProviderProps, useTheme } from "./index";
+import { themed, Themed } from "./index";
+import { createWrapper, delay } from "./testUtils";
 
-test("should return theme object properly", () => {
-  const dynamic = Math.random();
+test("themed()", async () => {
   const theme = {
-    string: Math.random().toString(36),
-    number: Math.random(),
-    responsive: [1, 2, 3, null],
-    dynamic: () => dynamic,
-    nested: {
-      value1: 1,
-    },
+    load: () => delay(10),
   };
-  const wrapper = createWrapper({ theme });
-  const { result, rerender } = renderHook(() => useTheme<typeof theme>(), {
-    wrapper,
+  const wrapper = createWrapper({
+    theme,
+    fallback: <div data-testid="loading" />,
   });
-
-  const obj = result.current.theme;
-
-  expect(result.current.theme.string).toBe(theme.string);
-  expect(result.current.theme.number).toBe(theme.number);
-  expect(result.current.theme.responsive).toBe(1);
-  expect(result.current.theme.dynamic).toBe(dynamic);
-  expect(result.current.theme.nested.value1).toBe(theme.nested.value1);
-
-  rerender();
-
-  expect(result.current.theme).toBe(obj);
-
-  expect(result.current.theme.string).toBe(theme.string);
-  expect(result.current.theme.number).toBe(theme.number);
-  expect(result.current.theme.responsive).toBe(1);
-  expect(result.current.theme.dynamic).toBe(dynamic);
-  expect(result.current.theme.nested.value1).toBe(theme.nested.value1);
-});
-
-test("dynamic value", () => {
-  const theme = {
-    hello: "Hello",
-    helloWorld: (x: any) => `${x.theme.hello} World`,
-  };
-  const wrapper = createWrapper({ theme });
-  const { result } = renderHook(
-    () => useTheme<typeof theme>().theme.helloWorld,
+  const { getByTestId } = render(
+    <>{themed("div", () => ({ "data-testid": "done" }))}</>,
     { wrapper }
   );
-  expect(result.current).toBe("Hello World");
+
+  getByTestId("loading");
+  await act(() => delay(15));
+  getByTestId("done");
 });
 
-function createWrapper<T>(props: ThemeProviderProps<T>) {
-  return ({ children }: any) =>
-    React.createElement(ThemeProvider as any, props, children);
-}
+test("<Themed/>", async () => {
+  const theme = {
+    load: () => delay(10),
+  };
+  const wrapper = createWrapper({
+    theme,
+    fallback: <div data-testid="loading" />,
+  });
+  const { getByTestId } = render(
+    <Themed data-testid="done" props={() => null} />,
+    { wrapper }
+  );
+
+  getByTestId("loading");
+  await act(() => delay(15));
+  getByTestId("done");
+});
