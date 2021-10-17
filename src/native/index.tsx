@@ -15,9 +15,9 @@ export function useBreakpoint(
   const { selector } = options;
   const screenSize = selector?.(width, height) ?? width;
 
-  const breakpoint = useMemo(() => {
+  const [breakpoint] = useMemo(() => {
     return findBreakpoint(screenSize, breakpoints);
   }, [screenSize, breakpoints]);
 
-  return breakpoint;
+  return [breakpoint, screenSize];
 }

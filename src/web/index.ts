@@ -13,11 +13,11 @@ export function useBreakpoint(
 ) {
   const { selector, defaultScreenSize } = options;
   const selectorRef = useRef(selector);
-  const [screenSize, setScreenSize] = useState(() =>
-    getScreenSize(selectorRef.current)
+  const [screenSize, setScreenSize] = useState(
+    () => getScreenSize(selectorRef.current) ?? defaultScreenSize
   );
 
-  const breakpoint = useMemo(() => {
+  const [breakpoint] = useMemo(() => {
     return findBreakpoint(screenSize, breakpoints);
   }, [screenSize, breakpoints]);
 
@@ -25,7 +25,7 @@ export function useBreakpoint(
 
   useEffect(() => {
     function handleResize() {
-      setScreenSize(getScreenSize(selectorRef.current));
+      setScreenSize(getScreenSize(selectorRef.current) ?? defaultScreenSize);
     }
 
     window.addEventListener("resize", handleResize);
@@ -35,7 +35,7 @@ export function useBreakpoint(
     };
   }, [setScreenSize]);
 
-  return breakpoint;
+  return [breakpoint, screenSize];
 }
 
 function getScreenSize(selector?: (width: number, height: number) => number) {
