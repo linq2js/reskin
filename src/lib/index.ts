@@ -273,7 +273,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
   });
 });
 
-function useTheme<T = any>(): ThemeContext<ThemeObjectInfer<T>> {
+function useTheme<T = any>(): ThemeContext<T> {
   return useContext(themeContext);
 }
 
