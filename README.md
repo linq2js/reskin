@@ -295,20 +295,20 @@ const theme = {
 
 It has following props
 
-- theme (any, required): a theme object, it can be any object type. reskin will create a proxy object that references to this object, and calculate the object prop value according to breakpoint and ratio
-- breakpoint (number, optional)
-- ratio (number, optional)
+- **theme** (any, required): a theme object, it can be any object type. reskin will create a proxy object that references to this object, and calculate the object prop value according to breakpoint and ratio
+- **breakpoint** (number, optional)
+- **ratio** (number, optional)
 
 ### useTheme()
 
 Returns theme context object, it has following props
 
-- theme: a proxy of theme object which is passed to ThemeProvider
-- original: a theme object which is passed to ThemeProvider
-- context: a context object which is passed to ThemeProvider
-- breakpoint: a breakpoint value which is passed to ThemeProvider
-- ratio: a ratio value which is passed to ThemeProvider
-- rx(values): returns value according to selected breakpoint and ratio
+- **theme**: a proxy of theme object which is passed to ThemeProvider
+- **original**: a theme object which is passed to ThemeProvider
+- **context**: a context object which is passed to ThemeProvider
+- **breakpoint**: a breakpoint value which is passed to ThemeProvider
+- **ratio**: a ratio value which is passed to ThemeProvider
+- **rx(values)**: returns value according to selected breakpoint and ratio
   ```jsx
   // let say you have ThemeProvider like this and your breakpoints are [360, 480, 768]
   // that means 1 is for 480 screen size

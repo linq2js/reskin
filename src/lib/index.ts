@@ -12,9 +12,10 @@ import {
 } from "react";
 
 export interface ThemeProviderProps {
-  theme: any;
+  theme: Theme;
   ratio?: number;
   breakpoint?: number;
+  platform?: string;
   context?: any;
   fallback?: ReactNode;
   onChange?: (themeContext: any) => void;
@@ -30,8 +31,16 @@ export type ResponsiveValue<T> =
 
 export interface ThemeMeta<T> {}
 
+export interface Theme {
+  key?: string;
+  load?: (context: ThemeContext) => any;
+  platform?: string;
+  [key: string]: any;
+}
+
 export type ThemeContext<T = any, TContext = any> = {
   original: T;
+  platform?: string;
   context: TContext;
   breakpoint?: number;
   ratio?: number;
@@ -42,7 +51,9 @@ export type ThemeContext<T = any, TContext = any> = {
   extract<
     TKey extends keyof TThemeProps,
     TThemeProps extends {},
-    TProps extends { [key in keyof TThemeProps]?: boolean }
+    TProps extends {
+      [key in keyof TThemeProps]?: boolean;
+    }
   >(
     themeProps: TThemeProps,
     compProps: TProps,
@@ -52,8 +63,13 @@ export type ThemeContext<T = any, TContext = any> = {
 
 export type ThemePropInfer<T> = T extends Array<infer TItem>
   ? TItem
-  : T extends (...args: any[]) => any
+  : // prop value can be function
+  T extends (...args: any[]) => any
   ? ReturnType<T>
+  : T extends { $platform: infer TPlatform }
+  ? TPlatform extends { [key: string]: infer TProps }
+    ? ThemePropInfer<TProps>
+    : never
   : T extends { [key: string]: any }
   ? ThemeObjectInfer<T>
   : T extends null
@@ -84,20 +100,16 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
     context,
     suspense,
     fallback,
+    platform,
     onChange,
   } = props;
   const onChangeRef = useRef(onChange);
-  const cacheRef = useRef<ThemeCache>();
   const contextRef = useRef(context);
   const rerender = useState<any>()[1];
-  const value = useMemo<ThemeContext>(() => {
-    // return prev cache value if responsive value used and theme is not changed
-    if (
-      cacheRef.current &&
-      !cacheRef.current.hasResponsiveValue &&
-      cacheRef.current.value.original === theme
-    ) {
-      return cacheRef.current.value;
+  const themeCacheRef = useRef(new Map<string, ThemeCache>());
+  const cache = useMemo<ThemeCache>(() => {
+    if (theme.key && themeCacheRef.current.has(theme.key)) {
+      return themeCacheRef.current.get(theme.key) as ThemeCache;
     }
     const hasRatio = typeof ratio === "number";
     const hasBreakpoint = typeof breakpoint === "number";
@@ -178,6 +190,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
 
     let themeProxy: any;
     const contextValue: ThemeContext = Object.assign(rx, {
+      platform,
       breakpoint,
       ratio,
       theme: null as any,
@@ -229,22 +242,24 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
       cache.ready = true;
     }
 
-    cacheRef.current = cache;
+    if (theme.key) {
+      themeCacheRef.current.set(theme.key, cache);
+    }
 
-    return cache.value;
-  }, [breakpoint, ratio, theme, rerender]);
+    return cache;
+  }, [breakpoint, ratio, theme, platform, rerender]);
   contextRef.current = context;
   onChangeRef.current = onChange;
 
-  if (!cacheRef.current?.ready) {
+  if (!cache.ready) {
     if (suspense) {
-      throw cacheRef.current?.promise;
+      throw cache.promise;
     }
     return fallback as any;
   }
 
   return createElement(themeContext.Provider, {
-    value: value as any,
+    value: cache.value,
     children,
   });
 });
@@ -268,16 +283,25 @@ function createProxy(obj: any, rx: ThemeContext) {
       const hasValue = map.has(prop);
       if (!hasValue) {
         let value = obj[prop];
-        if (
-          typeof value === "object" &&
-          value !== null &&
-          !Array.isArray(value)
-        ) {
-          // is plain object
-          value = createProxy(value, rx);
+        // is plain object
+        if (isObject(value)) {
+          if ("$platform" in value) {
+            if (!value.$platform) {
+              throw new Error("Invalid platform specific value");
+            }
+            if (!rx.platform) {
+              throw new Error("No platform provided in ThemeProvider");
+            }
+            value = value.$platform[rx.platform];
+            if (isObject(value)) {
+              value = createProxy(value, rx);
+            }
+          } else {
+            value = createProxy(value, rx);
+          }
         } else {
           if (typeof value === "function") {
-            value = value(rx);
+            value = value(rx, obj);
           }
           value = rx(value);
         }
@@ -287,6 +311,10 @@ function createProxy(obj: any, rx: ThemeContext) {
       return map.get(prop);
     },
   });
+}
+
+function isObject(value: any) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function createThemeHook<T>(): () => ThemeContext<ThemeObjectInfer<T>> {

@@ -19,7 +19,7 @@ test("should return theme object properly", () => {
     wrapper,
   });
 
-  const obj = result.current.theme;
+  const prevTheme = result.current.theme;
 
   expect(result.current.theme.string).toBe(theme.string);
   expect(result.current.theme.number).toBe(theme.number);
@@ -29,7 +29,7 @@ test("should return theme object properly", () => {
 
   rerender();
 
-  expect(result.current.theme).toBe(obj);
+  expect(result.current.theme).toBe(prevTheme);
 
   expect(result.current.theme.string).toBe(theme.string);
   expect(result.current.theme.number).toBe(theme.number);
@@ -92,4 +92,40 @@ test("extract() with custom keys", () => {
     value: undefined,
     otherProps: { other: 2, sm: true },
   });
+});
+
+test("plaform specific", () => {
+  const defaultTheme = {
+    topKey: "aaa",
+    fontSize: {
+      $platform: {
+        web: 1,
+        ios: 2,
+        android: 3,
+      },
+    },
+    group: {
+      $platform: {
+        web: {
+          fontSize: 1,
+        },
+        ios: {
+          fontSize: 2,
+        },
+        android: {
+          fontSize: 3,
+        },
+      },
+    },
+  };
+  const wrapper = createWrapper({ theme: defaultTheme, platform: "ios" });
+  const { result } = renderHook(
+    () => {
+      const { theme } = useTheme<typeof defaultTheme>();
+      return [theme.group.fontSize, theme.fontSize];
+    },
+    { wrapper }
+  );
+
+  expect(result.current).toEqual([2, 2]);
 });
