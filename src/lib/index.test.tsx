@@ -32,7 +32,7 @@ test("<Themed/>", async () => {
     fallback: <div data-testid="loading" />,
   });
   const { getByTestId } = render(
-    <Themed data-testid="done" props={() => null} />,
+    <Themed data-testid="done" sx={() => null} />,
     { wrapper }
   );
 

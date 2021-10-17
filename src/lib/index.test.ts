@@ -129,3 +129,25 @@ test("plaform specific", () => {
 
   expect(result.current).toEqual([2, 2]);
 });
+
+test("plaform specific with regex", () => {
+  const defaultTheme = {
+    topKey: "aaa",
+    fontSize: {
+      $platform: {
+        "ios.+": 1,
+        ios13: 2,
+      },
+    },
+  };
+  const wrapper = createWrapper({ theme: defaultTheme, platform: "ios14" });
+  const { result } = renderHook(
+    () => {
+      const { theme } = useTheme<typeof defaultTheme>();
+      return theme.fontSize;
+    },
+    { wrapper }
+  );
+
+  expect(result.current).toEqual(1);
+});

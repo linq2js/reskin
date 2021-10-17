@@ -46,7 +46,7 @@ export type ThemeContext<T = any, TContext = any> = {
   ratio?: number;
   theme: ThemeObjectInfer<T>;
   <T>(value: ResponsiveValue<T>): T | undefined;
-  rx<T>(value: ResponsiveValue<T>): T | undefined;
+  sx<T>(value: ResponsiveValue<T>): T | undefined;
   change(theme: any): void;
   extract<
     TKey extends keyof TThemeProps,
@@ -115,7 +115,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
     const hasBreakpoint = typeof breakpoint === "number";
     let hasResponsiveValue = false;
 
-    function rx(value: any) {
+    function sx(value: any) {
       // responsive value
       if (Array.isArray(value)) {
         hasResponsiveValue = true;
@@ -189,13 +189,13 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
     }
 
     let themeProxy: any;
-    const contextValue: ThemeContext = Object.assign(rx, {
+    const contextValue: ThemeContext = Object.assign(sx, {
       platform,
       breakpoint,
       ratio,
       theme: null as any,
       original: theme,
-      rx,
+      sx,
       get context() {
         return contextRef.current;
       },
@@ -203,7 +203,7 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
       extract,
     });
 
-    Object.defineProperty(rx, "theme", {
+    Object.defineProperty(sx, "theme", {
       get() {
         if (!themeProxy) {
           themeProxy = createProxy(theme, contextValue) as any;
@@ -268,7 +268,7 @@ function useTheme<T = any>(): ThemeContext<ThemeObjectInfer<T>> {
   return useContext(themeContext);
 }
 
-function createProxy(obj: any, rx: ThemeContext) {
+function createProxy(obj: any, sx: ThemeContext) {
   const map = new Map<string | Symbol, any>();
   let keys: string[];
   return new Proxy(EMPTY_OBJECT, {
@@ -289,21 +289,36 @@ function createProxy(obj: any, rx: ThemeContext) {
             if (!value.$platform) {
               throw new Error("Invalid platform specific value");
             }
-            if (!rx.platform) {
+            if (!sx.platform) {
               throw new Error("No platform provided in ThemeProvider");
             }
-            value = value.$platform[rx.platform];
+            const platformValues = value.$platform;
+            value = undefined;
+            if (sx.platform in platformValues) {
+              value = platformValues[sx.platform];
+            } else {
+              // using regex
+              Object.entries(platformValues).some(([k, v]) => {
+                const re = `^${k}\$`;
+                if ((sx.platform as string).match(re)) {
+                  value = v;
+                  return true;
+                }
+                return false;
+              });
+            }
+
             if (isObject(value)) {
-              value = createProxy(value, rx);
+              value = createProxy(value, sx);
             }
           } else {
-            value = createProxy(value, rx);
+            value = createProxy(value, sx);
           }
         } else {
           if (typeof value === "function") {
-            value = value(rx, obj);
+            value = value(sx, obj);
           }
-          value = rx(value);
+          value = sx(value);
         }
         map.set(prop, value);
         return value;
@@ -336,19 +351,19 @@ function findBreakpoint(
 
 const Themed: FC<{
   as?: any;
-  props: (theme: ThemeContext) => any;
+  sx: (theme: ThemeContext) => any;
   [key: string]: any;
 }> = memo((props) => {
-  const { as: a, props: p, ...o } = props;
+  const { as, sx, ...others } = props;
   const theme = useTheme();
-  return createElement(a || "div", { ...p(theme), ...o });
+  return createElement(as || "div", { ...sx(theme), ...others });
 });
 
 function themed<T>(
-  type: string | FC<T> | Component<T>,
-  props: (themeContext: ThemeContext) => T
+  as: string | FC<T> | Component<T>,
+  sx: (themeContext: ThemeContext) => T
 ): ReactNode {
-  return createElement(Themed, { as: type, props });
+  return createElement(Themed, { as, sx });
 }
 
 export {
