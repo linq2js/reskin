@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.0.6](https://github.com/linq2js/reskin/compare/v3.0.5...v3.0.6) (2021-10-17)
+
+
+### Bug Fixes
+
+* select() ([a4ad94c](https://github.com/linq2js/reskin/commit/a4ad94c81392ac45dca27cf1db7b098f623bf842))
+
 ### [3.0.5](https://github.com/linq2js/reskin/compare/v3.0.4...v3.0.5) (2021-10-17)
 
 
