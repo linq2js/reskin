@@ -45,7 +45,7 @@ export type ThemeContext<T = any, TContext = any> = {
   context: TContext;
   breakpoint?: number;
   ratio?: number;
-  theme: ThemeObject<T>;
+  theme: ThemeOf<T>;
   <T>(value: ResponsiveValue<T>): T | undefined;
   sx<T>(value: ResponsiveValue<T>): T | undefined;
   set(theme: any): void;
@@ -77,12 +77,12 @@ export type ThemeProp<T> = T extends Array<infer TItem>
     ? ThemeProp<TProps>
     : never
   : T extends { [key: string]: any }
-  ? ThemeObject<T>
+  ? ThemeOf<T>
   : T extends null
   ? undefined
   : T;
 
-export type ThemeObject<T> = {
+export type ThemeOf<T> = {
   [key in keyof T]: ThemeProp<T[key]>;
 };
 
@@ -267,7 +267,7 @@ function createThemeCache(
   Object.defineProperty(sx, "theme", {
     get() {
       if (!themeProxy) {
-        themeProxy = createProxy(theme, contextValue) as any;
+        themeProxy = createProxy(theme, contextValue, undefined) as any;
       }
       return themeProxy;
     },
@@ -307,10 +307,10 @@ function useTheme<T = any>(): ThemeContext<T> {
   return useContext(themeContext);
 }
 
-function createProxy(obj: any, sx: ThemeContext) {
+function createProxy(obj: any, sx: ThemeContext, parent: any) {
   const map = new Map<string | Symbol, any>();
   let keys: string[];
-  return new Proxy(EMPTY_OBJECT, {
+  const proxy = new Proxy(EMPTY_OBJECT, {
     get(_, prop) {
       if (prop === "$$keys") {
         if (!keys) {
@@ -352,14 +352,14 @@ function createProxy(obj: any, sx: ThemeContext) {
             }
 
             if (isObject(value)) {
-              value = createProxy(value, sx);
+              value = createProxy(value, sx, proxy);
             }
           } else {
-            value = createProxy(value, sx);
+            value = createProxy(value, sx, proxy);
           }
         } else {
           if (typeof value === "function") {
-            value = value(sx, obj);
+            value = value(sx, parent, obj);
           }
           value = sx(value);
         }
@@ -369,13 +369,15 @@ function createProxy(obj: any, sx: ThemeContext) {
       return map.get(prop);
     },
   });
+
+  return proxy;
 }
 
 function isObject(value: any) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function createThemeHook<T>(): () => ThemeContext<ThemeObject<T>> {
+function createThemeHook<T>(): () => ThemeContext<ThemeOf<T>> {
   return useTheme;
 }
 
