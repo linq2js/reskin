@@ -2,41 +2,31 @@ import * as React from "react";
 
 import { render, act } from "@testing-library/react";
 
-import { themed, Themed } from "./index";
+import { Themed } from "./index";
 import { createWrapper, delay } from "./testUtils";
 
-test("themed()", async () => {
+test("Themed", async () => {
   const theme = {
     load: () => delay(10),
+    size: {
+      xs: 100,
+      lg: "100px",
+    },
   };
   const wrapper = createWrapper({
     theme,
     fallback: <div data-testid="loading" />,
   });
   const { getByTestId } = render(
-    <>{themed("div", () => ({ "data-testid": "done" }))}</>,
-    { wrapper }
+    <Themed as="div" data-testid="done" w="xs" h="5lg" />,
+    {
+      wrapper,
+    }
   );
 
   getByTestId("loading");
   await act(() => delay(15));
-  getByTestId("done");
-});
-
-test("<Themed/>", async () => {
-  const theme = {
-    load: () => delay(10),
-  };
-  const wrapper = createWrapper({
-    theme,
-    fallback: <div data-testid="loading" />,
-  });
-  const { getByTestId } = render(
-    <Themed data-testid="done" sx={() => null} />,
-    { wrapper }
-  );
-
-  getByTestId("loading");
-  await act(() => delay(15));
-  getByTestId("done");
+  const $done = getByTestId("done");
+  expect($done.style.width).toBe("100px");
+  expect($done.style.height).toBe("500px");
 });

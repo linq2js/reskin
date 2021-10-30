@@ -21,10 +21,10 @@ export interface ThemeProviderProps {
   fallback?: ReactNode;
   onChange?: (value: any) => void;
   suspense?: boolean;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
-export type ResponsiveValue<T> =
+export type ResponsiveValue<T = number> =
   | undefined
   | null
   | T
@@ -39,6 +39,22 @@ export interface Theme {
   [key: string]: any;
 }
 
+export type ComponentProps<T> = T extends FC<infer TProps>
+  ? TProps
+  : T extends Component<infer TProps>
+  ? TProps
+  : T extends (props: infer TProps) => any
+  ? TProps
+  : T extends { propTypes: infer TProps }
+  ? TProps
+  : T extends new (props: infer TProps) => any
+  ? TProps
+  : Record<string, any>;
+
+export type ComponentStyle<TProps> = TProps extends { style: infer TStyle }
+  ? TStyle
+  : never;
+
 export type ThemeContext<T = any, TContext = any> = {
   original: T;
   query?: string;
@@ -46,25 +62,56 @@ export type ThemeContext<T = any, TContext = any> = {
   breakpoint?: number;
   ratio?: number;
   theme: ThemeOf<T>;
-  <T>(value: ResponsiveValue<T>): T | undefined;
-  sx<T>(value: ResponsiveValue<T>): T | undefined;
+  styles: Map<any, ThemeOf<any>>;
+  <T>(value: ResponsiveValue<T>, type?: "spacing" | "size"): T | undefined;
+  sx<T>(value: ResponsiveValue<T>, type?: "spacing" | "size"): T | undefined;
   set(theme: any): void;
   select<T = any>(
     themeProps: Record<string, any>,
     value: any,
     defaultValue?: any
   ): T;
-  extract<
-    TKey extends keyof TThemeProps,
-    TThemeProps extends {},
-    TProps extends {
-      [key in keyof TThemeProps]?: boolean;
+};
+
+export type ThemedValue =
+  | string
+  | number
+  | (string | number)[]
+  | false
+  | null
+  | undefined;
+
+export type ThemedProps<T> = (
+  | ({
+      as: T;
+      render?: never;
+    } & { props?: ComponentProps<T> })
+  | {
+      as?: never;
+      props?: never;
+      render: (
+        style: Record<string, any>,
+        themeContext: ThemeContext
+      ) => ReactNode;
     }
-  >(
-    themeProps: TThemeProps,
-    compProps: TProps,
-    keys?: TKey | TKey[]
-  ): [TThemeProps[TKey] | undefined, Omit<TProps, TKey>];
+) & {
+  w?: ThemedValue;
+  h?: ThemedValue;
+  p?: ThemedValue;
+  m?: ThemedValue;
+  mx?: ThemedValue;
+  my?: ThemedValue;
+  ml?: ThemedValue;
+  mr?: ThemedValue;
+  mb?: ThemedValue;
+  mt?: ThemedValue;
+  px?: ThemedValue;
+  py?: ThemedValue;
+  pl?: ThemedValue;
+  pr?: ThemedValue;
+  pb?: ThemedValue;
+  pt?: ThemedValue;
+  [key: string]: any;
 };
 
 export type ThemeProp<T> = T extends Array<infer TItem>
@@ -96,7 +143,7 @@ type ThemeCache = {
 const themeContext = createContext<ThemeContext<any>>(null as any);
 const EMPTY_OBJECT = {};
 
-const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
+export const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
   const {
     breakpoint,
     ratio,
@@ -149,6 +196,14 @@ const ThemeProvider: FC<ThemeProviderProps> = memo((props) => {
   });
 });
 
+function parseValue(value: string) {
+  const [_, str, unit] = /([-.\d]+)?(.+)/.exec(value) || [];
+  if (!unit) {
+    return { value };
+  }
+  return { value: str ? parseFloat(str) : 1, unit };
+}
+
 function createThemeCache(
   breakpoint: number | undefined,
   ratio: number | undefined,
@@ -161,24 +216,45 @@ function createThemeCache(
   const hasRatio = typeof ratio === "number";
   const hasBreakpoint = typeof breakpoint === "number";
 
-  function tryFindActualValue(baseValue: any) {
+  function tryParseValue(value: any, type?: string) {
+    if (!type || typeof value !== "string") {
+      return value;
+    }
+    const v1 = parseValue(value);
+    if (!v1.unit) return value;
+    const uv = contextValue.theme[type][v1.unit];
+    if (typeof uv === "undefined") {
+      return value;
+    }
+    // maybe unit value includes other unit
+    // ex: theme = { spacing: { sx: '100px' } }
+    if (typeof uv === "string") {
+      const v2 = parseValue(uv);
+      if (v2.unit) {
+        return v1.value * v2.value + v2.unit;
+      }
+    }
+    return v1.value * uv;
+  }
+
+  function tryFindActualValue(baseValue: any, type?: string) {
     // for example: if your base breakpoint is 360, the actual screen size is 720
     // that means ratio is 2
     // we try to compute actual value using the formula baseValue * ratio
     if (hasRatio && typeof baseValue === "number") {
       return baseValue * ratio;
     }
-    return baseValue;
+    return tryParseValue(baseValue, type);
   }
 
-  function sx(value: any) {
+  function sx(value: any, type?: string) {
     // responsive value
     if (Array.isArray(value)) {
       // use first value as base value
       const baseValue = value[0];
       // no break point
       if (!hasBreakpoint) {
-        return tryFindActualValue(baseValue);
+        return tryFindActualValue(baseValue, type);
       }
       let selectedValue = value[breakpoint];
       // the value for specified breakpoint is not provided
@@ -189,49 +265,17 @@ function createThemeCache(
           for (let i = breakpoint - 1; i >= 0; i--) {
             const v = value[i];
             if (typeof v !== "undefined" && v !== null) {
-              return v;
+              return tryParseValue(v, type);
             }
           }
           // no fallback value found
           return undefined;
         }
-        return tryFindActualValue(baseValue);
+        return tryFindActualValue(baseValue, type);
       }
-      return selectedValue;
+      return tryParseValue(selectedValue, type);
     }
-    return value;
-  }
-
-  function extract<
-    TKey extends keyof TThemeProps,
-    TThemeProps extends {},
-    TProps extends { [key in keyof TThemeProps]?: boolean }
-  >(
-    themeProps: TThemeProps,
-    compProps: TProps,
-    keys?: TKey | TKey[]
-  ): [TThemeProps[TKey] | undefined, Omit<TProps, TKey>] {
-    if (!keys) {
-      keys = (themeProps as any)?.$$keys;
-    }
-    if (!Array.isArray(keys)) {
-      keys = keys ? [keys as TKey] : [];
-    }
-    if (!keys.length) {
-      return [undefined as any, compProps];
-    }
-
-    const clonedOfProps = { ...compProps };
-    let found = false;
-    let value: any = undefined;
-    keys.forEach((key) => {
-      if (!found && compProps[key]) {
-        found = true;
-        value = themeProps[key];
-      }
-      delete clonedOfProps[key];
-    });
-    return [value, clonedOfProps];
+    return tryParseValue(value, type);
   }
 
   function select(props: any, value: any, def?: any): any {
@@ -260,8 +304,8 @@ function createThemeCache(
       return contextRef.current;
     },
     set,
-    extract,
     select,
+    styles: new Map(),
   });
 
   Object.defineProperty(sx, "theme", {
@@ -302,9 +346,77 @@ function createThemeCache(
 
   return cache;
 }
+export function extract<
+  TKey extends keyof TThemeProps,
+  TThemeProps extends {},
+  TProps extends { [key in keyof TThemeProps]?: boolean }
+>(
+  themeProps: TThemeProps,
+  compProps: TProps,
+  keys?: TKey | TKey[]
+): [TThemeProps[TKey] | undefined, Omit<TProps, TKey>] {
+  if (!keys) {
+    keys = (themeProps as any)?.$$keys;
+  }
+  if (!Array.isArray(keys)) {
+    keys = keys ? [keys as TKey] : [];
+  }
+  if (!keys.length) {
+    return [undefined as any, compProps];
+  }
 
-function useTheme<T = any>(): ThemeContext<T> {
+  const clonedOfProps = { ...compProps };
+  let found = false;
+  let value: any = undefined;
+  keys.forEach((key) => {
+    if (!found && compProps[key]) {
+      found = true;
+      value = themeProps[key];
+    }
+    delete clonedOfProps[key];
+  });
+  return [value, clonedOfProps];
+}
+
+export function useTheme<T = any>(): ThemeContext<T> {
   return useContext(themeContext);
+}
+
+export function useStyle<T extends (...args: any[]) => any>(
+  key: string,
+  style: T
+): ThemeOf<ReturnType<T>>;
+export function useStyle<T extends (...args: any[]) => any>(
+  style: T,
+  ...args: Parameters<T>
+): ThemeOf<ReturnType<T>>;
+export function useStyle<T>(style: T): ThemeOf<T>;
+export function useStyle(...args: any[]): ThemeOf<any> {
+  const context = useTheme();
+  let key: any;
+  let factory: () => any;
+
+  // default key generator
+  if (typeof args[0] === "function") {
+    const f = args[0];
+    const a = args.slice(1);
+    key = a.join(":");
+    factory = () => f(...a);
+  }
+  // custom key
+  else if (typeof args[1] === "function") {
+    key = args[0];
+    factory = args[1];
+  } else {
+    key = args[0];
+    factory = () => key;
+  }
+  let style = context.styles.get(key);
+  if (!style) {
+    style = createProxy(factory(), context, undefined);
+    context.styles.set(key, style);
+  }
+  return style;
 }
 
 function createProxy(obj: any, sx: ThemeContext, parent: any) {
@@ -373,15 +485,15 @@ function createProxy(obj: any, sx: ThemeContext, parent: any) {
   return proxy;
 }
 
-function isObject(value: any) {
+export function isObject(value: any) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function createThemeHook<T>(): () => ThemeContext<ThemeOf<T>> {
+export function createThemeHook<T>(): () => ThemeContext<ThemeOf<T>> {
   return useTheme;
 }
 
-function findBreakpoint(
+export function findBreakpoint(
   actualSize: number,
   breakpoints: number[],
   defaultBreakpoint = 0
@@ -395,24 +507,97 @@ function findBreakpoint(
   return [defaultBreakpoint, breakpoints[defaultBreakpoint]];
 }
 
-const Themed: FC<{
-  as?: any;
-  sx: (theme: ThemeContext) => any;
-  [key: string]: any;
-}> = memo((props) => {
-  const { as, sx, ...others } = props;
-  const theme = useTheme();
-  return createElement(as || "div", { ...sx(theme), ...others });
-});
+export function Themed<
+  TComponent extends string | FC | Component | (new (props: any) => any)
+>(props: ThemedProps<TComponent>): any {
+  const {
+    w,
+    h,
+    p,
+    m,
+    mx = m,
+    my = m,
+    ml = mx,
+    mr = mx,
+    mt = my,
+    mb = my,
+    px = p,
+    py = p,
+    pl = px,
+    pr = px,
+    pt = py,
+    pb = py,
+    render,
+    as,
+    props: inputProps,
+    style: inputStyle = inputProps?.style,
+    ...otherProps
+  } = props;
+  const tc = useTheme();
+  const style: Record<string, any> = {};
 
-function themed<T>(
-  as: string | FC<T> | Component<T>,
-  sx: (themeContext: ThemeContext) => T
-): ReactNode {
-  return createElement(Themed, { as, sx });
+  setStyle(tc, style, "size", "width", w);
+  setStyle(tc, style, "size", "height", h);
+  setStyle(tc, style, "spacing", "marginLeft", ml);
+  setStyle(tc, style, "spacing", "marginTop", mt);
+  setStyle(tc, style, "spacing", "marginRight", mr);
+  setStyle(tc, style, "spacing", "marginBottom", mb);
+  setStyle(tc, style, "spacing", "paddingLeft", pl);
+  setStyle(tc, style, "spacing", "paddingRight", pr);
+  setStyle(tc, style, "spacing", "paddingTop", pt);
+  setStyle(tc, style, "spacing", "paddingBottom", pb);
+
+  if (typeof render === "function") {
+    return render(
+      {
+        style: Array.isArray(inputStyle)
+          ? inputStyle.concat(style)
+          : { ...style, ...inputStyle },
+        ...otherProps,
+      },
+      tc
+    );
+  }
+
+  return createElement(as as any, {
+    style: Array.isArray(inputStyle)
+      ? inputStyle.concat(style)
+      : { ...style, ...inputStyle },
+    ...otherProps,
+    ...inputProps,
+  });
 }
 
-function useRatio(
+function setStyle(
+  sx: ThemeContext,
+  style: Record<string, any>,
+  type: "spacing" | "size",
+  prop:
+    | "width"
+    | "height"
+    | "marginLeft"
+    | "marginTop"
+    | "marginRight"
+    | "marginBottom"
+    | "paddingLeft"
+    | "paddingRight"
+    | "paddingTop"
+    | "paddingBottom",
+  value: ThemedValue
+) {
+  if (Array.isArray(value)) {
+    style[prop] = sx(
+      typeof sx.breakpoint === "undefined"
+        ? value[0]
+        : value[sx.breakpoint] ?? value[0],
+      type
+    );
+  } else if (typeof value !== "undefined") {
+    style[prop] = sx(value, type);
+  }
+}
+
+export function useRatio(
   screenSize: number,
   breakpoint: number,
   maxRatios: [number, number][],
@@ -429,13 +614,3 @@ function useRatio(
     return maxRatio;
   }, [breakpoint, maxRatios]);
 }
-
-export {
-  useTheme,
-  ThemeProvider,
-  themed,
-  Themed,
-  createThemeHook,
-  findBreakpoint,
-  useRatio,
-};

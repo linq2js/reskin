@@ -1,7 +1,15 @@
+import * as React from "react";
 import { useMemo } from "react";
-import { useWindowDimensions } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 
-import { findBreakpoint } from "../lib";
+import { findBreakpoint, Themed } from "../lib";
+
+<Themed render={() => null} />;
+<Themed
+  as={View}
+  props={{ style: { alignContent: "flex-end" } }}
+  data-testid="aaa"
+/>;
 
 export interface UseBreakpointsOptions {
   selector?: (width: number, height: number) => number;

@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react-hooks";
 
-import { useTheme } from "./index";
+import { extract, useTheme, useStyle, ThemeContext } from "./index";
 import { createWrapper } from "./testUtils";
 
 test("should return theme object properly", () => {
@@ -62,7 +62,7 @@ test("extract() with default keys", () => {
   const { result } = renderHook(
     () => {
       const props = { sm: true, other: 2 };
-      const { extract, theme } = useTheme<typeof defaultTheme>();
+      const { theme } = useTheme<typeof defaultTheme>();
       const [value, otherProps] = extract(theme.spacing, props);
       return { value, otherProps };
     },
@@ -82,7 +82,7 @@ test("extract() with custom keys", () => {
   const { result } = renderHook(
     () => {
       const props = { sm: true, other: 2 };
-      const { extract, theme } = useTheme<typeof defaultTheme>();
+      const { theme } = useTheme<typeof defaultTheme>();
       const [value, otherProps] = extract(theme.spacing, props, "xl");
       return { value, otherProps };
     },
@@ -150,4 +150,49 @@ test("plaform specific with regex", () => {
   );
 
   expect(result.current).toEqual(1);
+});
+
+test("useStyle", () => {
+  const rootTheme = { width: 100 };
+  const style = {
+    width: ({ theme }: ThemeContext<typeof rootTheme>) => theme.width * 2,
+  };
+  const wrapper = createWrapper({ theme: rootTheme });
+  const { result } = renderHook(
+    () => {
+      return useStyle(style).width;
+    },
+    { wrapper }
+  );
+  expect(result.current).toBe(200);
+});
+
+test("useStyle with key", () => {
+  const rootTheme = { width: 100 };
+  const style = (color: string) => ({ color });
+  const wrapper = createWrapper({ theme: rootTheme });
+  const { result } = renderHook(
+    () => {
+      const color1 = useStyle("green", () => style("red")).color;
+      const color2 = useStyle(style, "blue").color;
+      return [color1, color2];
+    },
+    { wrapper }
+  );
+  expect(result.current).toEqual(["red", "blue"]);
+});
+
+test("useStyle with args", () => {
+  const rootTheme = { width: 100 };
+  const style = {
+    width: ({ theme }: ThemeContext<typeof rootTheme>) => theme.width * 2,
+  };
+  const wrapper = createWrapper({ theme: rootTheme });
+  const { result } = renderHook(
+    () => {
+      return useStyle(style).width;
+    },
+    { wrapper }
+  );
+  expect(result.current).toBe(200);
 });
