@@ -81,6 +81,8 @@ export type ThemedValue =
   | null
   | undefined;
 
+export type ThemedElement = {};
+
 export type ThemedProps<T> = (
   | ({
       as: T;
@@ -95,18 +97,61 @@ export type ThemedProps<T> = (
       ) => ReactNode;
     }
 ) & {
+  /**
+   * size (width and height)
+   */
+  s?: ThemedValue;
+  /**
+   * width
+   */
   w?: ThemedValue;
+  /**
+   * height
+   */
   h?: ThemedValue;
+  /**
+   * padding
+   */
   p?: ThemedValue;
+  /**
+   * margin
+   */
   m?: ThemedValue;
+  /**
+   * margin horizontal
+   */
   mx?: ThemedValue;
+  /**
+   * margin vertical
+   */
   my?: ThemedValue;
+  /**
+   * margin left
+   */
   ml?: ThemedValue;
+  /**
+   * margin right
+   */
   mr?: ThemedValue;
+  /**
+   * margin bottom
+   */
   mb?: ThemedValue;
+  /**
+   * margin top
+   */
   mt?: ThemedValue;
+  /**
+   * padding horizontal
+   */
   px?: ThemedValue;
+  /**
+   * padding vertical
+   */
   py?: ThemedValue;
+  /**
+   * padding left
+   */
   pl?: ThemedValue;
   pr?: ThemedValue;
   pb?: ThemedValue;
@@ -400,7 +445,7 @@ export function useStyle(...args: any[]): ThemeOf<any> {
   if (typeof args[0] === "function") {
     const f = args[0];
     const a = args.slice(1);
-    key = a.join(":");
+    key = f.name + "::" + a.join(":");
     factory = () => f(...a);
   }
   // custom key
@@ -507,12 +552,17 @@ export function findBreakpoint(
   return [defaultBreakpoint, breakpoints[defaultBreakpoint]];
 }
 
-export function Themed<
+function renderThemed<
   TComponent extends string | FC | Component | (new (props: any) => any)
->(props: ThemedProps<TComponent>): any {
+>(
+  tc: ThemeContext,
+  props: ThemedProps<TComponent>,
+  renderChildren?: (children: any) => any
+) {
   const {
-    w,
-    h,
+    s,
+    w = s,
+    h = s,
     p,
     m,
     mx = m,
@@ -531,9 +581,9 @@ export function Themed<
     as,
     props: inputProps,
     style: inputStyle = inputProps?.style,
+    children,
     ...otherProps
   } = props;
-  const tc = useTheme();
   const style: Record<string, any> = {};
 
   setStyle(tc, style, "size", "width", w);
@@ -547,25 +597,44 @@ export function Themed<
   setStyle(tc, style, "spacing", "paddingTop", pt);
   setStyle(tc, style, "spacing", "paddingBottom", pb);
 
-  if (typeof render === "function") {
-    return render(
-      {
-        style: Array.isArray(inputStyle)
-          ? inputStyle.concat(style)
-          : { ...style, ...inputStyle },
-        ...otherProps,
-      },
-      tc
-    );
-  }
-
-  return createElement(as as any, {
+  const finalProps = {
     style: Array.isArray(inputStyle)
       ? inputStyle.concat(style)
       : { ...style, ...inputStyle },
+    children:
+      renderChildren && typeof children !== "undefined"
+        ? renderChildren(children)
+        : children,
     ...otherProps,
     ...inputProps,
-  });
+  };
+
+  if (typeof render === "function") {
+    return render(finalProps, tc);
+  }
+
+  return createElement(as as any, finalProps);
+}
+
+export function themed<
+  TComponent extends string | FC | Component | (new (props: any) => any)
+>(props: ThemedProps<TComponent>) {
+  const tc = useTheme();
+  const renderChildren = (children: any): any =>
+    Array.isArray(children)
+      ? children.map((child, index) =>
+          renderThemed(tc, { key: index, ...child })
+        )
+      : renderThemed(tc, children, renderChildren);
+
+  return renderThemed(tc, props, renderChildren);
+}
+
+export function Themed<
+  TComponent extends string | FC | Component | (new (props: any) => any)
+>(props: ThemedProps<TComponent>): any {
+  const tc = useTheme();
+  return renderThemed(tc, props);
 }
 
 function setStyle(
