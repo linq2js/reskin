@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.4.0](https://github.com/linq2js/reskin/compare/v3.3.0...v3.4.0) (2021-10-31)
+
+
+### Features
+
+* add themed ([da11c0d](https://github.com/linq2js/reskin/commit/da11c0d9c66a820fdc6e25911450dc8856472426))
+
 ## [3.3.0](https://github.com/linq2js/reskin/compare/v3.2.0...v3.3.0) (2021-10-30)
 
 
